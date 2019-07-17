@@ -1,0 +1,13 @@
+# Usage: source install
+
+sudo=
+[ `id -u` -ne 0 ] && sudo=sudo
+[ -z "$editor" ] && editor=`which nano || which vim || which vi`
+
+$sudo cp cf-dns-update.conf /etc/cf-dns-update.conf &&\
+$sudo cp cf-dns-update /usr/local/bin/cf-dns-update &&\
+$sudo cp cf-dns-update.timer cf-dns-update.service /etc/systemd/system/ &&\
+$sudo chmod 0600 /etc/cf-dns-update.conf &&\
+$sudo $EDITOR /etc/cf-dns-update.conf &&\
+$sudo systemctl enable cf-dns-update.timer &&\
+$sudo systemctl start cf-dns-update.timer

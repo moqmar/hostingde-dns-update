@@ -1,0 +1,6 @@
+[Unit]
+Description=Cloudflare DNS Updater
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/bin/cf-dns-update

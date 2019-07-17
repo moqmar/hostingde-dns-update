@@ -1,0 +1,10 @@
+[Unit]
+Description=Update Cloudflare DNS every 5 minutes
+After=network.target
+
+[Timer]
+OnBootSec=20
+OnUnitActiveSec=5min
+
+[Install]
+WantedBy=timers.target

@@ -1,0 +1,47 @@
+#!/bin/sh
+
+. /etc/cf-dns-update.conf
+
+ip=`curl -s https://checkip.amazonaws.com`
+oldip=`cat /var/external-ip.txt 2>/dev/null`
+
+if [ "$ip" != "$oldip" ]; then
+
+  if [ -z "$CF_RECORD_ID" ]; then
+    CF_RECORD_ID=`curl -sX GET "https://api.cloudflare.com/client/v4/zones/$CF_ZONE/dns_records?type=A&name=$CF_RECORD" \
+      -H "X-Auth-Email: $CF_EMAIL" \
+      -H "X-Auth-Key: $CF_KEY" | grep -Po '\s*"id":\s*"\K[^"]+'`
+
+    if [ -z "$CF_RECORD_ID" ]; then
+      echo "Couldn't determine record ID. Please make sure that the record exists on Cloudflare and that the credentials are correct."
+
+      exit 1
+    else
+      echo "Got record ID ($CF_RECORD_ID), adding to /etc/cf-dns-update.conf"
+
+      echo >> /etc/cf-dns-update.conf
+      echo "# Remove the following line if the script stopps working after a change to the DNS configuration on Cloudflare." >> /etc/cf-dns-update.conf
+      echo "CF_RECORD_ID=$CF_RECORD_ID" >> /etc/cf-dns-update.conf
+    fi
+  fi
+
+  response=`curl -sX "PUT" "https://api.cloudflare.com/client/v4/zones/$CF_ZONE/dns_records/$CF_RECORD_ID" \
+    -H "X-Auth-Email: $CF_EMAIL" \
+    -H "X-Auth-Key: $CF_KEY" \
+    -H "Content-Type: application/json" \
+    --data '{"type":"A","name":"'"$CF_RECORD"'","content":"'"$ip"'"}'`
+
+  status=$?
+  if [ $status -ne 0 ]; then
+    echo "Couldn't update DNS entry, exit code $status."
+    [ -n "$response" ] && echo "Response from Cloudflare API: $response" || "No response from Cloudflare API."
+
+    exit $status
+  else
+    echo $ip > /var/external-ip.txt
+
+    [ -z "$oldip" ] && oldip="(unknown)"
+    echo "Updated DNS entry: $oldip -> $ip"
+  fi
+
+fi
